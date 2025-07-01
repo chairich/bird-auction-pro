@@ -1,1 +1,5 @@
-export const adminEmails = ["admin@example.com", "youremail@gmail.com"];
+export const ADMIN_EMAILS = ["chairich@gmail.com"];
+
+export function isAdminEmail(email: string | null | undefined) {
+  return email && ADMIN_EMAILS.includes(email);
+}
