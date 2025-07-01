@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { db, storage } from "../lib/firebase";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
@@ -19,31 +20,37 @@ export default function CreateAuction() {
       return alert("กรุณากรอกข้อมูลให้ครบ");
 
     setUploading(true);
-    let imageUrl = "";
+    try {
+      let imageUrl = "";
 
-    if (image) {
-      const imgRef = ref(storage, `auction-images/${Date.now()}-${image.name}`);
-      await uploadBytes(imgRef, image);
-      imageUrl = await getDownloadURL(imgRef);
+      if (image) {
+        const imgRef = ref(storage, `auction-images/${Date.now()}-${image.name}`);
+        const snapshot = await uploadBytes(imgRef, image);
+        imageUrl = await getDownloadURL(snapshot.ref);
+      }
+
+      const endsAt = Timestamp.fromDate(new Date(endTime));
+
+      await addDoc(collection(db, "auctions"), {
+        name,
+        startPrice: parseFloat(startPrice),
+        minIncrement: parseFloat(minIncrement),
+        currentBid: parseFloat(startPrice),
+        image: imageUrl || "",
+        endsAt,
+        createdAt: Timestamp.now(),
+        bids: [],
+        status: "active",
+      });
+
+      alert("🎉 ประกาศสำเร็จ!");
+      setForm({ name: "", startPrice: "", minIncrement: "", endTime: "", image: null });
+    } catch (error: any) {
+      console.error("❌ Upload Error:", error);
+      alert("เกิดข้อผิดพลาด: " + error.message);
+    } finally {
+      setUploading(false);
     }
-
-    const endsAt = Timestamp.fromDate(new Date(endTime));
-
-    await addDoc(collection(db, "auctions"), {
-      name,
-      startPrice: parseFloat(startPrice),
-      minIncrement: parseFloat(minIncrement),
-      currentBid: parseFloat(startPrice),
-      image: imageUrl || "",
-      endsAt,
-      createdAt: Timestamp.now(),
-      bids: [],
-      status: "active",
-    });
-
-    alert("🎉 ประกาศสำเร็จ!");
-    setForm({ name: "", startPrice: "", minIncrement: "", endTime: "", image: null });
-    setUploading(false);
   };
 
   return (
@@ -91,43 +98,3 @@ export default function CreateAuction() {
     </div>
   );
 }
-const handleSubmit = async () => {
-  try {
-    const { name, startPrice, minIncrement, endTime, image } = form;
-    if (!name || !startPrice || !minIncrement || !endTime)
-      return alert("กรุณากรอกข้อมูลให้ครบ");
-
-    setUploading(true);
-    let imageUrl = "";
-
-    if (image) {
-      const imgRef = ref(storage, `auction-images/${Date.now()}-${image.name}`);
-      console.log("Uploading to:", imgRef.fullPath);
-      await uploadBytes(imgRef, image);
-      imageUrl = await getDownloadURL(imgRef);
-      console.log("Image uploaded:", imageUrl);
-    }
-
-    const endsAt = Timestamp.fromDate(new Date(endTime));
-
-    await addDoc(collection(db, "auctions"), {
-      name,
-      startPrice: parseFloat(startPrice),
-      minIncrement: parseFloat(minIncrement),
-      currentBid: parseFloat(startPrice),
-      image: imageUrl || "",
-      endsAt,
-      createdAt: Timestamp.now(),
-      bids: [],
-      status: "active",
-    });
-
-    alert("🎉 ประกาศสำเร็จ!");
-    setForm({ name: "", startPrice: "", minIncrement: "", endTime: "", image: null });
-  } catch (err) {
-    console.error("❌ Error:", err);
-    alert("เกิดข้อผิดพลาด: " + err);
-  } finally {
-    setUploading(false);
-  }
-};
