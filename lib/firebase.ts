@@ -6,7 +6,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyBUNNtOVjCq40fneEp-DbDCVtIVGBVI6Pg",
   authDomain: "pet-project-1d196.firebaseapp.com",
   projectId: "pet-project-1d196",
-  storageBucket: "pet-project-1d196.firebasestorage.app",
+  storageBucket: "pet-project-1d196.appspot.com", 
   messagingSenderId: "261670745146",
   appId: "1:261670745146:web:eaf0ff381b1184bdee3103"
 };
