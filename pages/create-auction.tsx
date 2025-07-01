@@ -91,3 +91,43 @@ export default function CreateAuction() {
     </div>
   );
 }
+const handleSubmit = async () => {
+  try {
+    const { name, startPrice, minIncrement, endTime, image } = form;
+    if (!name || !startPrice || !minIncrement || !endTime)
+      return alert("กรุณากรอกข้อมูลให้ครบ");
+
+    setUploading(true);
+    let imageUrl = "";
+
+    if (image) {
+      const imgRef = ref(storage, `auction-images/${Date.now()}-${image.name}`);
+      console.log("Uploading to:", imgRef.fullPath);
+      await uploadBytes(imgRef, image);
+      imageUrl = await getDownloadURL(imgRef);
+      console.log("Image uploaded:", imageUrl);
+    }
+
+    const endsAt = Timestamp.fromDate(new Date(endTime));
+
+    await addDoc(collection(db, "auctions"), {
+      name,
+      startPrice: parseFloat(startPrice),
+      minIncrement: parseFloat(minIncrement),
+      currentBid: parseFloat(startPrice),
+      image: imageUrl || "",
+      endsAt,
+      createdAt: Timestamp.now(),
+      bids: [],
+      status: "active",
+    });
+
+    alert("🎉 ประกาศสำเร็จ!");
+    setForm({ name: "", startPrice: "", minIncrement: "", endTime: "", image: null });
+  } catch (err) {
+    console.error("❌ Error:", err);
+    alert("เกิดข้อผิดพลาด: " + err);
+  } finally {
+    setUploading(false);
+  }
+};
