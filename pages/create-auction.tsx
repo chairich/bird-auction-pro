@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { db, storage } from "../lib/firebase";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
@@ -22,34 +21,28 @@ export default function CreateAuction() {
     setUploading(true);
     let imageUrl = "";
 
-    try {
-      if (image) {
-        const imgRef = ref(storage, `auction-images/${Date.now()}-${image.name}`);
-        await uploadBytes(imgRef, image);
-        imageUrl = await getDownloadURL(imgRef);
-      }
-
-      const endsAt = Timestamp.fromDate(new Date(endTime));
-
-      await addDoc(collection(db, "auctions"), {
-        name,
-        startPrice: parseFloat(startPrice),
-        minIncrement: parseFloat(minIncrement),
-        currentBid: parseFloat(startPrice),
-        image: imageUrl || "",
-        endsAt,
-        createdAt: Timestamp.now(),
-        bids: [],
-        status: "active",
-      });
-
-      alert("🎉 ประกาศสำเร็จ!");
-      setForm({ name: "", startPrice: "", minIncrement: "", endTime: "", image: null });
-    } catch (err) {
-      console.error(err);
-      alert("เกิดข้อผิดพลาดในการบันทึก กรุณาลองใหม่");
+    if (image) {
+      const imgRef = ref(storage, `auction-images/${Date.now()}-${image.name}`);
+      await uploadBytes(imgRef, image);
+      imageUrl = await getDownloadURL(imgRef);
     }
 
+    const endsAt = Timestamp.fromDate(new Date(endTime));
+
+    await addDoc(collection(db, "auctions"), {
+      name,
+      startPrice: parseFloat(startPrice),
+      minIncrement: parseFloat(minIncrement),
+      currentBid: parseFloat(startPrice),
+      image: imageUrl || "",
+      endsAt,
+      createdAt: Timestamp.now(),
+      bids: [],
+      status: "active",
+    });
+
+    alert("🎉 ประกาศสำเร็จ!");
+    setForm({ name: "", startPrice: "", minIncrement: "", endTime: "", image: null });
     setUploading(false);
   };
 
