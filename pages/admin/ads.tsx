@@ -1,40 +1,23 @@
 import { useEffect, useState } from "react";
-import { db, storage } from "../../lib/firebase";
 import {
   collection,
   getDocs,
   addDoc,
-  updateDoc,
   deleteDoc,
   doc,
+  Timestamp,
 } from "firebase/firestore";
+import { db, storage } from "../../lib/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
-type Ad = {
-  id?: string;
-  image: string;
-  link: string;
-  position: string;
-  active: boolean;
-};
-
-export default function AdminAdsPage() {
-  const [ads, setAds] = useState<Ad[]>([]);
-  const [form, setForm] = useState<Ad>({
-    image: "",
-    link: "",
-    position: "top",
-    active: true,
-  });
-  const [file, setFile] = useState<File | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
+export default function AdminAds() {
+  const [ads, setAds] = useState<any[]>([]);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [url, setUrl] = useState("");
 
   const fetchAds = async () => {
-    const snapshot = await getDocs(collection(db, "ads"));
-    const data = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as Ad[];
+    const snap = await getDocs(collection(db, "ads"));
+    const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     setAds(data);
   };
 
@@ -43,112 +26,65 @@ export default function AdminAdsPage() {
   }, []);
 
   const handleSubmit = async () => {
-    if (!form.link || !form.position) {
-      alert("กรอกข้อมูลให้ครบ");
-      return;
-    }
+    if (!imageFile || !url) return alert("กรุณาเลือกภาพและใส่ลิงก์");
 
-    let imageUrl = form.image;
+    const storageRef = ref(storage, `ads/${Date.now()}-${imageFile.name}`);
+    await uploadBytes(storageRef, imageFile);
+    const imageUrl = await getDownloadURL(storageRef);
 
-    if (file) {
-      const imageRef = ref(storage, `ads/${Date.now()}-${file.name}`);
-      await uploadBytes(imageRef, file);
-      imageUrl = await getDownloadURL(imageRef);
-    }
+    await addDoc(collection(db, "ads"), {
+      image: imageUrl,
+      url,
+      createdAt: Timestamp.now(),
+    });
 
-    const newData = { ...form, image: imageUrl };
-
-    if (editingId) {
-      await updateDoc(doc(db, "ads", editingId), newData);
-      alert("✅ แก้ไขแล้ว");
-    } else {
-      await addDoc(collection(db, "ads"), newData);
-      alert("✅ เพิ่มโฆษณาแล้ว");
-    }
-
-    setForm({ image: "", link: "", position: "top", active: true });
-    setFile(null);
-    setEditingId(null);
+    setImageFile(null);
+    setUrl("");
     fetchAds();
   };
 
-  const handleEdit = (ad: Ad) => {
-    setForm(ad);
-    setEditingId(ad.id || null);
-  };
-
   const handleDelete = async (id: string) => {
-    if (confirm("ลบโฆษณานี้?")) {
-      await deleteDoc(doc(db, "ads", id));
-      fetchAds();
-    }
+    await deleteDoc(doc(db, "ads", id));
+    fetchAds();
   };
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
-      <h1 className="text-xl font-bold mb-4">🖼 จัดการโฆษณา (อัปโหลดได้)</h1>
+    <div className="max-w-2xl mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-4">📢 จัดการโฆษณา</h1>
 
-      <div className="space-y-2 mb-6">
+      <div className="space-y-2">
         <input
           type="file"
-          accept="image/*"
-          onChange={(e) => setFile(e.target.files?.[0] || null)}
-          className="border p-2 w-full"
+          onChange={(e) => setImageFile(e.target.files?.[0] || null)}
         />
         <input
-          placeholder="ลิงก์ปลายทาง"
-          value={form.link}
-          onChange={(e) => setForm({ ...form, link: e.target.value })}
+          type="text"
+          placeholder="ลิงก์ URL"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
           className="border p-2 w-full"
         />
-        <select
-          value={form.position}
-          onChange={(e) => setForm({ ...form, position: e.target.value })}
-          className="border p-2 w-full"
-        >
-          <option value="top">Top</option>
-          <option value="between">Between</option>
-          <option value="sidebar">Sidebar</option>
-          <option value="footer">Footer</option>
-        </select>
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={form.active}
-            onChange={(e) => setForm({ ...form, active: e.target.checked })}
-          />
-          แสดงผล
-        </label>
         <button
           onClick={handleSubmit}
           className="bg-green-600 text-white py-2 px-4 rounded"
         >
-          {editingId ? "บันทึกการแก้ไข" : "เพิ่มโฆษณา"}
+          ➕ เพิ่มโฆษณา
         </button>
       </div>
 
-      <hr className="my-4" />
-
-      <div className="space-y-4">
+      <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
         {ads.map((ad) => (
-          <div key={ad.id} className="border p-4 rounded shadow bg-white">
-            <img src={ad.image} className="h-24 object-contain mb-2" />
-            <p className="text-sm text-gray-700">{ad.link}</p>
-            <p className="text-xs">ตำแหน่ง: {ad.position} | {ad.active ? "✅ Active" : "❌ ไม่แสดง"}</p>
-            <div className="mt-2 flex gap-2">
-              <button
-                onClick={() => handleEdit(ad)}
-                className="px-3 py-1 bg-blue-600 text-white rounded"
-              >
-                แก้ไข
-              </button>
-              <button
-                onClick={() => handleDelete(ad.id!)}
-                className="px-3 py-1 bg-red-600 text-white rounded"
-              >
-                ลบ
-              </button>
-            </div>
+          <div key={ad.id} className="border p-2 rounded shadow">
+            <img src={ad.image} alt="ad" className="w-full h-32 object-cover mb-2" />
+            <a href={ad.url} target="_blank" className="text-blue-600 text-sm block">
+              {ad.url}
+            </a>
+            <button
+              onClick={() => handleDelete(ad.id)}
+              className="text-red-600 text-xs mt-1"
+            >
+              ❌ ลบ
+            </button>
           </div>
         ))}
       </div>
