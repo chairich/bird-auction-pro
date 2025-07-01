@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { db, storage } from "../lib/firebase";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
@@ -13,21 +12,21 @@ export default function CreateAuction() {
     image: null as File | null,
   });
   const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async () => {
     const { name, startPrice, minIncrement, endTime, image } = form;
-    if (!name || !startPrice || !minIncrement || !endTime)
-      return alert("กรุณากรอกข้อมูลให้ครบ");
+    if (!name || !startPrice || !minIncrement || !endTime || !image) {
+      setError("กรุณากรอกข้อมูลให้ครบและเลือกภาพ");
+      return;
+    }
 
     setUploading(true);
+    setError("");
     try {
-      let imageUrl = "";
-
-      if (image) {
-        const imgRef = ref(storage, `auction-images/${Date.now()}-${image.name}`);
-        const snapshot = await uploadBytes(imgRef, image);
-        imageUrl = await getDownloadURL(snapshot.ref);
-      }
+      const imageRef = ref(storage, `auction-images/${Date.now()}-${image.name}`);
+      const snapshot = await uploadBytes(imageRef, image);
+      const imageUrl = await getDownloadURL(snapshot.ref);
 
       const endsAt = Timestamp.fromDate(new Date(endTime));
 
@@ -36,7 +35,7 @@ export default function CreateAuction() {
         startPrice: parseFloat(startPrice),
         minIncrement: parseFloat(minIncrement),
         currentBid: parseFloat(startPrice),
-        image: imageUrl || "",
+        image: imageUrl,
         endsAt,
         createdAt: Timestamp.now(),
         bids: [],
@@ -45,9 +44,9 @@ export default function CreateAuction() {
 
       alert("🎉 ประกาศสำเร็จ!");
       setForm({ name: "", startPrice: "", minIncrement: "", endTime: "", image: null });
-    } catch (error: any) {
-      console.error("❌ Upload Error:", error);
-      alert("เกิดข้อผิดพลาด: " + error.message);
+    } catch (e: any) {
+      console.error(e);
+      setError("❌ ไม่สามารถโพสต์ได้: " + e.message);
     } finally {
       setUploading(false);
     }
@@ -88,12 +87,13 @@ export default function CreateAuction() {
         onChange={(e) => setForm({ ...form, image: e.target.files?.[0] || null })}
         className="mb-4"
       />
+      {error && <p className="text-red-600 mb-2">{error}</p>}
       <button
         onClick={handleSubmit}
-        className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
         disabled={uploading}
+        className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
       >
-        {uploading ? "⏳ กำลังอัปโหลด..." : "สร้างรายการประมูล"}
+        {uploading ? "⏳ กำลังอัปโหลด..." : "✅ สร้างรายการประมูล"}
       </button>
     </div>
   );
